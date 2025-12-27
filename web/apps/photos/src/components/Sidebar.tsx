@@ -299,6 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 showFreeUpSpace,
                 onShowExport,
                 onLogout: handleLogout,
+
                 onRouteToSimilarImages: () => router.push("/similar-images"),
                 onShowWatchFolder: handleOpenWatchFolder,
                 pseudoIDs: {
@@ -395,6 +396,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onHelpActionHandled: setPendingHelpAction,
                         pendingFreeUpSpaceAction,
                         onFreeUpSpaceActionHandled: setPendingFreeUpSpaceAction,
+                        onRouteToSimilarImages: () => {
+                            void router.push("/similar-images");
+                        },
                         onRouteToSimilarImages: () => {
                             void router.push("/similar-images");
                         },
@@ -842,6 +846,11 @@ const UtilitySection: React.FC<UtilitySectionProps> = ({
                 variant="secondary"
                 label={t("free_up_space")}
                 onClick={showFreeUpSpace}
+            />
+            <RowButton
+                variant="secondary"
+                label={t("similar_images")}
+                onClick={onRouteToSimilarImages}
             />
             <RowButton
                 variant="secondary"

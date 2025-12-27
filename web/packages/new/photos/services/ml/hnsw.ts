@@ -251,6 +251,7 @@ export class HNSWIndex {
     }
 
     /**
+    /**
      * Save index to Emscripten virtual filesystem (backed by IDBFS).
      *
      * @param filename - Name of file to save to in virtual FS
