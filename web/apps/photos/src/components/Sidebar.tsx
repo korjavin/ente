@@ -299,6 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 showFreeUpSpace,
                 onShowExport,
                 onLogout: handleLogout,
+                onRouteToSimilarImages: () => router.push("/similar-images"),
                 onShowWatchFolder: handleOpenWatchFolder,
                 pseudoIDs: {
                     uncategorized: uncategorizedCollectionSummaryID,
@@ -394,6 +395,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onHelpActionHandled: setPendingHelpAction,
                         pendingFreeUpSpaceAction,
                         onFreeUpSpaceActionHandled: setPendingFreeUpSpaceAction,
+                        onRouteToSimilarImages: () => {
+                            void router.push("/similar-images");
+                        },
                     }}
                 />
                 <Divider sx={{ my: "2px" }} />
@@ -785,6 +789,7 @@ type UtilitySectionProps = SectionProps &
         onHelpActionHandled: (action?: HelpAction) => void;
         pendingFreeUpSpaceAction?: FreeUpSpaceAction;
         onFreeUpSpaceActionHandled: (action?: FreeUpSpaceAction) => void;
+        onRouteToSimilarImages: () => void;
     };
 
 const UtilitySection: React.FC<UtilitySectionProps> = ({
@@ -810,6 +815,7 @@ const UtilitySection: React.FC<UtilitySectionProps> = ({
     onHelpActionHandled,
     pendingFreeUpSpaceAction,
     onFreeUpSpaceActionHandled,
+    onRouteToSimilarImages,
 }) => {
     const { showMiniDialog } = useBaseContext();
 
@@ -836,6 +842,11 @@ const UtilitySection: React.FC<UtilitySectionProps> = ({
                 variant="secondary"
                 label={t("free_up_space")}
                 onClick={showFreeUpSpace}
+            />
+            <RowButton
+                variant="secondary"
+                label={t("similar_images")}
+                onClick={onRouteToSimilarImages}
             />
             <RowButton
                 variant="secondary"
