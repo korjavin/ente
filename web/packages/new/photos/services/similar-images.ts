@@ -420,124 +420,125 @@ const groupSimilarImagesHNSW = async (
         console.log(`[Similar Images] No cached index found, building from scratch...`);
         index = await getCLIPHNSWIndex(fileIDs.length);
     }
+}
 
-    if (!indexLoaded) {
-        // Build index from scratch
-        console.log(`[Similar Images] Building HNSW index for ${fileIDs.length} vectors...`);
-        console.log(`[Similar Images] Index capacity: ${index.getMaxElements()}, current size: ${index.size()}`);
-        onProgress?.(58);
+if (!indexLoaded) {
+    // Build index from scratch
+    console.log(`[Similar Images] Building HNSW index for ${fileIDs.length} vectors...`);
+    console.log(`[Similar Images] Index capacity: ${index.getMaxElements()}, current size: ${index.size()}`);
+    onProgress?.(58);
 
-        try {
-            // Add all vectors at once with progress reporting
-            await index.addVectors(fileIDs, embeddings, (addProgress) => {
-                // Map internal progress (0-100) to overall progress (58-90)
-                const overallProgress = 58 + (addProgress * 32) / 100;
-                onProgress?.(Math.round(overallProgress));
-            });
-            console.log(`[Similar Images] Successfully added ${index.size()} vectors`);
-
-            onProgress?.(90);
-
-            // Save index to IDBFS for next time
-            console.log(`[Similar Images] Saving index to IDBFS...`);
-            const mappings = await index.saveIndex(indexFilename);
-
-            // Save metadata to IndexedDB
-            await saveHNSWIndexMetadata({
-                id: "clip-hnsw-index",
-                fileIDHash: currentFileIDHash,
-                fileIDToLabel: mappings.fileIDToLabel,
-                labelToFileID: mappings.labelToFileID,
-                vectorCount: fileIDs.length,
-                maxElements: index.getMaxElements(),
-                createdAt: Date.now(),
-                filename: indexFilename,
-            });
-
-            console.log(`[Similar Images] Index saved successfully`);
-            onProgress?.(95);
-        } catch (error) {
-            console.error(`[Similar Images] Failed to add vectors to HNSW index:`, error);
-            throw new Error(`Failed to build similarity index: ${error}`);
-        }
-    }
-
-    onProgress?.(65);
-
-    // Search for similar files using HNSW
-    console.log(`[Similar Images] Searching for similar images...`);
-    const searchResults = await index.searchBatch(
-        fileIDs,
-        embeddings,
-        100, // k neighbors to search
-        (searchProgress) => {
-            // Map search progress (0-100) to overall progress (65-80)
-            const overallProgress = 65 + (searchProgress * 15) / 100;
+    try {
+        // Add all vectors at once with progress reporting
+        await index.addVectors(fileIDs, embeddings, (addProgress) => {
+            // Map internal progress (0-100) to overall progress (58-90)
+            const overallProgress = 58 + (addProgress * 32) / 100;
             onProgress?.(Math.round(overallProgress));
-        },
-    );
+        });
+        console.log(`[Similar Images] Successfully added ${index.size()} vectors`);
 
-    onProgress?.(80);
+        onProgress?.(90);
 
-    // Group similar files
-    console.log(`[Similar Images] Grouping similar images...`);
-    const usedFileIDs = new Set<number>();
-    const groups: SimilarImageGroup[] = [];
-    const fileByID = new Map(files.map((f) => [f.id, f]));
+        // Save index to IDBFS for next time
+        console.log(`[Similar Images] Saving index to IDBFS...`);
+        const mappings = await index.saveIndex(indexFilename);
 
-    for (const [fileID, neighbors] of searchResults) {
-        if (usedFileIDs.has(fileID)) continue;
-
-        const referenceFile = fileByID.get(fileID);
-        if (!referenceFile) continue;
-
-        const group: SimilarImageItem[] = [];
-        let furthestDistance = 0;
-
-        // Add reference file with all its collection memberships
-        const referenceCollectionIDs = collectionIDsByFileID.get(fileID) || new Set([referenceFile.collectionID]);
-        group.push({
-            file: referenceFile,
-            distance: 0,
-            similarityScore: 100,
-            // Get all collection memberships for this file
-            const neighborCollectionIDs = collectionIDsByFileID.get(neighborID) || new Set([neighborFile.collectionID]);
-            const similarityScore = Math.round((1 - distance) * 100);
-            group.push({
-                file: neighborFile,
-                distance,
-                similarityScore,
-                collectionIDs: neighborCollectionIDs,
-                collectionName:
-                    collectionNameByID.get(neighborFile.collectionID) ||
-                    "Unknown",
-            });
-
-            if(distance > furthestDistance) {
-            furthestDistance = distance;
-        }
-
-        usedFileIDs.add(neighborID);
-    }
-
-    // Only create group if we have more than one file
-    if (group.length > 1) {
-        // Sort by distance
-        group.sort((a, b) => a.distance - b.distance);
-
-        groups.push({
-            id: newID("sig_"),
-            items: group,
-            furthestDistance,
-            totalSize: group.reduce((sum, item) => {
-                const fileSize = item.file.info?.fileSize || 0;
-                return sum + fileSize;
-            }, 0),
-            isSelected: true,
+        // Save metadata to IndexedDB
+        await saveHNSWIndexMetadata({
+            id: "clip-hnsw-index",
+            fileIDHash: currentFileIDHash,
+            fileIDToLabel: mappings.fileIDToLabel,
+            labelToFileID: mappings.labelToFileID,
+            vectorCount: fileIDs.length,
+            maxElements: index.getMaxElements(),
+            createdAt: Date.now(),
+            filename: indexFilename,
         });
 
-        usedFileIDs.add(fileID);
+        console.log(`[Similar Images] Index saved successfully`);
+        onProgress?.(95);
+    } catch (error) {
+        console.error(`[Similar Images] Failed to add vectors to HNSW index:`, error);
+        throw new Error(`Failed to build similarity index: ${error}`);
     }
+}
+
+onProgress?.(65);
+
+// Search for similar files using HNSW
+console.log(`[Similar Images] Searching for similar images...`);
+const searchResults = await index.searchBatch(
+    fileIDs,
+    embeddings,
+    100, // k neighbors to search
+    (searchProgress) => {
+        // Map search progress (0-100) to overall progress (65-80)
+        const overallProgress = 65 + (searchProgress * 15) / 100;
+        onProgress?.(Math.round(overallProgress));
+    },
+);
+
+onProgress?.(80);
+
+// Group similar files
+console.log(`[Similar Images] Grouping similar images...`);
+const usedFileIDs = new Set<number>();
+const groups: SimilarImageGroup[] = [];
+const fileByID = new Map(files.map((f) => [f.id, f]));
+
+for (const [fileID, neighbors] of searchResults) {
+    if (usedFileIDs.has(fileID)) continue;
+
+    const referenceFile = fileByID.get(fileID);
+    if (!referenceFile) continue;
+
+    const group: SimilarImageItem[] = [];
+    let furthestDistance = 0;
+
+    // Add reference file with all its collection memberships
+    const referenceCollectionIDs = collectionIDsByFileID.get(fileID) || new Set([referenceFile.collectionID]);
+    group.push({
+        file: referenceFile,
+        distance: 0,
+        similarityScore: 100,
+        // Get all collection memberships for this file
+        const neighborCollectionIDs = collectionIDsByFileID.get(neighborID) || new Set([neighborFile.collectionID]);
+        const similarityScore = Math.round((1 - distance) * 100);
+        group.push({
+            file: neighborFile,
+            distance,
+            similarityScore,
+            collectionIDs: neighborCollectionIDs,
+            collectionName:
+                collectionNameByID.get(neighborFile.collectionID) ||
+                "Unknown",
+        });
+
+        if(distance > furthestDistance) {
+        furthestDistance = distance;
+    }
+
+    usedFileIDs.add(neighborID);
+}
+
+// Only create group if we have more than one file
+if (group.length > 1) {
+    // Sort by distance
+    group.sort((a, b) => a.distance - b.distance);
+
+    groups.push({
+        id: newID("sig_"),
+        items: group,
+        furthestDistance,
+        totalSize: group.reduce((sum, item) => {
+            const fileSize = item.file.info?.fileSize || 0;
+            return sum + fileSize;
+        }, 0),
+        isSelected: true,
+    });
+
+    usedFileIDs.add(fileID);
+}
 }
 
 onProgress?.(100);

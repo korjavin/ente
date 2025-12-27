@@ -251,7 +251,7 @@ export class HNSWIndex {
     }
 
     /**
-    /**
+
      * Save index to Emscripten virtual filesystem (backed by IDBFS).
      *
      * @param filename - Name of file to save to in virtual FS
@@ -377,7 +377,6 @@ export class HNSWIndex {
         // Set search parameters after loading
         this.index.setEfSearch(this.efSearch);
         console.log(`[HNSW] Set efSearch to ${this.efSearch}`);
-
         // Restore mappings
         this.fileIDToLabel = new Map(mappings.fileIDToLabel);
         this.labelToFileID = new Map(mappings.labelToFileID);
