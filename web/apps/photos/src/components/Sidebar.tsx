@@ -852,11 +852,7 @@ const UtilitySection: React.FC<UtilitySectionProps> = ({
                 label={t("similar_images")}
                 onClick={onRouteToSimilarImages}
             />
-            <RowButton
-                variant="secondary"
-                label={t("similar_images")}
-                onClick={onRouteToSimilarImages}
-            />
+
             <RowButton
                 variant="secondary"
                 label={t("preferences")}
