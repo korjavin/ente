@@ -166,7 +166,6 @@ export interface CachedSimilarImages {
     version: number;
 }
 
-
 /**
  * Metadata for a cached HNSW index stored in IndexedDB.
  *
@@ -213,5 +212,3 @@ export interface CachedHNSWIndexMetadata {
      */
     filename: string;
 }
-
-
