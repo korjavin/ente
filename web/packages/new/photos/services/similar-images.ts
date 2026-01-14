@@ -95,6 +95,11 @@ export const getSimilarImages = async (
         normalOwnedCollections.map(({ id }) => id),
     );
     const collectionNameByID = createCollectionNameByID(normalOwnedCollections);
+    const favoritesCollectionIDs = new Set(
+        normalOwnedCollections
+            .filter((c) => c.type === "favorites")
+            .map((c) => c.id),
+    );
 
     let collectionFiles = await savedCollectionFiles();
     collectionFiles = collectionFiles.filter(
@@ -178,6 +183,7 @@ export const getSimilarImages = async (
         collectionNameByID,
         distanceThreshold,
         onProgress,
+        favoritesCollectionIDs,
     );
     console.log(`[Similar Images] Found ${groups.length} similar image groups`);
 
@@ -240,6 +246,7 @@ const groupSimilarImagesHNSW = async (
     collectionNameByID: Map<number, string>,
     threshold: number,
     onProgress?: (progress: number) => void,
+    favoritesCollectionIDs?: Set<number>,
 ): Promise<SimilarImageGroup[]> => {
     if (files.length < 2) return [];
 
@@ -374,6 +381,7 @@ if (cachedMetadata) {
                 fileIDToLabel: cachedMetadata.fileIDToLabel,
                 labelToFileID: cachedMetadata.labelToFileID,
             });
+
             console.log(`[Similar Images] Successfully loaded cached index`);
 
             // Apply incremental updates
@@ -537,8 +545,20 @@ for (const [fileID, neighbors] of searchResults) {
 
 // Only create group if we have more than one file
 if (group.length > 1) {
-    // Sort by distance
-    group.sort((a, b) => a.distance - b.distance);
+    // Sort items so the "best" one is first (at index 0)
+    if (favoritesCollectionIDs) {
+        sortGroupItemsByQuality(group, favoritesCollectionIDs);
+    }
+
+    // Sort by distance (secondary sort, though Quality sort might override it for the first item)
+    // If we want to strictly keep distance sort for non-best items, we'd need more complex logic.
+    // For now, let's just ensure the group is sorted by distance primarily, UNLESS quality sort reorders it.
+    // Actually, the original local logic REPLACED the distance sort with Quality Sort.
+    // Let's defer to Quality Sort if enabled.
+    if (!favoritesCollectionIDs) {
+        group.sort((a, b) => a.distance - b.distance);
+    }
+
 
     groups.push({
         id: newID("sig_"),
@@ -697,6 +717,53 @@ export const calculateDeletionStats = (
     }
 
     return { totalSize, fileCount, groupCount };
+};
+
+/**
+ * Sort items within a group to ensure the "best" photo is first (at index 0).
+ *
+ * Priorities (matching mobile implementation):
+ * 1. Favorited files (files in a favorites collection)
+ * 2. Files with captions
+ * 3. Files with edited name/time
+ * 4. Larger file sizes
+ */
+const sortGroupItemsByQuality = (
+    groupItems: SimilarImageItem[],
+    favoritesCollectionIDs: Set<number>,
+) => {
+    groupItems.sort((a, b) => {
+        // Priority 1: Favorites
+        const aIsFavorite = Array.from(a.collectionIDs).some((cid) =>
+            favoritesCollectionIDs.has(cid),
+        );
+        const bIsFavorite = Array.from(b.collectionIDs).some((cid) =>
+            favoritesCollectionIDs.has(cid),
+        );
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+
+        // Priority 2: Captions
+        const aHasCaption = !!a.file.pubMagicMetadata?.data?.caption;
+        const bHasCaption = !!b.file.pubMagicMetadata?.data?.caption;
+        if (aHasCaption && !bHasCaption) return -1;
+        if (!aHasCaption && bHasCaption) return 1;
+
+        // Priority 3: Other Edits (Name or Time)
+        const aHasEdits =
+            !!a.file.pubMagicMetadata?.data?.editedName ||
+            !!a.file.pubMagicMetadata?.data?.editedTime;
+        const bHasEdits =
+            !!b.file.pubMagicMetadata?.data?.editedName ||
+            !!b.file.pubMagicMetadata?.data?.editedTime;
+        if (aHasEdits && !bHasEdits) return -1;
+        if (!aHasEdits && bHasEdits) return 1;
+
+        // Priority 4: File Size (Larger is better)
+        const aSize = a.file.info?.fileSize || 0;
+        const bSize = b.file.info?.fileSize || 0;
+        return bSize - aSize;
+    });
 };
 
 /**
