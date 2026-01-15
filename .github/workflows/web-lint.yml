@@ -7,6 +7,8 @@ on:
             - "web/**"
             - "rust/core/**"
             - ".github/workflows/web-lint.yml"
+    
+    workflow_dispatch:
 
 permissions:
     contents: read
