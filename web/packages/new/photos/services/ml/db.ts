@@ -202,6 +202,8 @@ export const saveIndexes = async (
         }),
         tx.objectStore("face-index").put(faceIndex),
         tx.objectStore("clip-index").put(clipIndex),
+        tx.objectStore("similar-images-cache").clear(),
+        tx.objectStore("hnsw-index-metadata").clear(),
         tx.done,
     ]);
 };

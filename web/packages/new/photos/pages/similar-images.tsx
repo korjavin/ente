@@ -351,6 +351,11 @@ const similarImagesReducer: React.Reducer<
         }
 
         case "toggleItemSelection": {
+            // Prevent toggling the first item (best photo)
+            if (action.itemIndex === 0) {
+                return state;
+            }
+
             const allSimilarImageGroups = [...state.allSimilarImageGroups];
             const filteredGroups = filterGroupsByCategory(
                 allSimilarImageGroups,
@@ -706,13 +711,10 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                     progress={removeProgress}
                     onRemove={onRemoveSimilarImages}
                 />
-            </Stack>
-
-
-        </Stack>
-    );
-};
-
+                    </Stack>
+                </Stack>
+                );
+            };
 interface CategoryTabsProps {
     categoryFilter: CategoryFilter;
     onCategoryFilterChange: (filter: CategoryFilter) => void;
@@ -798,7 +800,7 @@ const SimilarImagesList: React.FC<SimilarImagesListProps> = ({
 
     // Height constants for group list items
     // Breakdown: paddingBlockStart(24) + checkbox(42) + paddingBlock(4) + divider(1) + paddingBlockEnd(20) + itemPadding(16)
-    const GROUP_HEADER_HEIGHT = 24 + 42 + 4 + 1 + 20 + 16;
+    const GROUP_HEADER_HEIGHT = 107;
 
     const itemSize = useCallback(
         (index: number) => {
@@ -1078,7 +1080,7 @@ const GroupContent: React.FC<GroupContentProps> = ({
                     </Box>
                 )
             }
-        </ItemGrid >
+        </ItemGrid>
     );
 };
 

@@ -5,7 +5,6 @@ import {
     cosineDistance,
     cosineSimilarity,
     filterGroupsByCategory,
-    formatFileSize,
     sortSimilarImageGroups,
 } from "../similar-images";
 
@@ -84,26 +83,7 @@ describe("similar-images", () => {
         });
     });
 
-    describe("formatFileSize", () => {
-        it("should format bytes correctly", () => {
-            expect(formatFileSize(500)).toBe("500 B");
-        });
 
-        it("should format kilobytes correctly", () => {
-            expect(formatFileSize(1024)).toBe("1.0 KB");
-            expect(formatFileSize(1536)).toBe("1.5 KB");
-        });
-
-        it("should format megabytes correctly", () => {
-            expect(formatFileSize(1024 * 1024)).toBe("1.0 MB");
-            expect(formatFileSize(5.5 * 1024 * 1024)).toBe("5.5 MB");
-        });
-
-        it("should format gigabytes correctly", () => {
-            expect(formatFileSize(1024 * 1024 * 1024)).toBe("1.00 GB");
-            expect(formatFileSize(2.5 * 1024 * 1024 * 1024)).toBe("2.50 GB");
-        });
-    });
 
     describe("calculateDeletionStats", () => {
         const createMockGroup = (
