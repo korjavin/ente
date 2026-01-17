@@ -1,3 +1,4 @@
+import log from "ente-base/log";
 import type { EnteFile } from "ente-media/file";
 import {
     addToCollection,
@@ -131,7 +132,14 @@ export const removeSelectedSimilarImageGroups = async (
     const allCollections = await savedNormalCollections();
     const collectionsByID = new Map(allCollections.map((c) => [c.id, c]));
     for (const [collectionID, files] of filesToAdd.entries()) {
-        await addToCollection(collectionsByID.get(collectionID)!, files);
+        const collection = collectionsByID.get(collectionID);
+        if (collection) {
+            await addToCollection(collection, files);
+        } else {
+            log.warn(
+                `[Similar Images] Collection ${collectionID} not found, skipping addToCollection`,
+            );
+        }
         tickProgress();
     }
 
