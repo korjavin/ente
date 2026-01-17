@@ -180,16 +180,33 @@ export const removeSelectedSimilarImageGroups = async (
 /**
  * Find the most eligible item from a similar image group to retain.
  *
+ * Only considers items that are NOT selected for deletion (isSelected !== true)
+ * to honor user's explicit selection choices. If a user selects the "best photo"
+ * for deletion, we should respect that and choose another item to retain.
+ *
  * Prioritization order (matching mobile implementation):
  * 1. Favorited files (files in a favorites collection)
  * 2. Files with captions
  * 3. Files with edited name/time
  * 4. Larger file sizes
- * 5. First item if all else is equal
+ * 5. First unselected item if all else is equal
+ *
+ * Fallback: If ALL items are selected for deletion, falls back to original
+ * priority logic to ensure at least one item is retained.
  */
 const similarImageGroupItemToRetain = async (
     group: SimilarImageGroup,
 ): Promise<SimilarImageGroup["items"][number]> => {
+    // First, filter to only items NOT explicitly selected for deletion
+    // This honors the user's intent: if they select "best photo", delete it
+    const unselectedItems = group.items.filter(
+        (item) => item.isSelected !== true,
+    );
+
+    // If all items are selected, fall back to all items (must retain at least one)
+    const candidateItems =
+        unselectedItems.length > 0 ? unselectedItems : group.items;
+
     const itemsWithFavorites: SimilarImageGroup["items"] = [];
     const itemsWithCaption: SimilarImageGroup["items"] = [];
     const itemsWithOtherEdits: SimilarImageGroup["items"] = [];
@@ -205,7 +222,7 @@ const similarImageGroupItemToRetain = async (
             .map((c) => c.id),
     );
 
-    for (const item of group.items) {
+    for (const item of candidateItems) {
         // Check if file is in a favorites collection
         const isFavorited = Array.from(item.collectionIDs).some((cid) =>
             favoritesCollectionIDs.has(cid),
@@ -241,8 +258,8 @@ const similarImageGroupItemToRetain = async (
         return findLargestItem(itemsWithOtherEdits);
     }
 
-    // If no special attributes, pick the largest file
-    return findLargestItem(group.items);
+    // If no special attributes, pick the largest file from candidates
+    return findLargestItem(candidateItems);
 };
 
 /**

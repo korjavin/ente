@@ -279,5 +279,33 @@ describe("similar-images-delete", () => {
             // Group should NOT be fully removed (all 4 items remain)
             expect(result.fullyRemovedGroupIDs.has("group1")).toBe(false);
         });
+
+        it("should swap retained item if best photo is explicitly selected", async () => {
+            // Setup: Group with 2 items. Item 1 is "best" (index 0).
+            // Initially: Item 1 retained, Item 2 selected.
+            const group = createMockGroup("group1", [1, 2], true);
+
+            // User explicitly selects Item 1 (override retention)
+            group.items[0]!.isSelected = true;
+
+            // User explicity deselects Item 2 (to keep it instead)
+            group.items[1]!.isSelected = false;
+
+            vi.mocked(collection.savedNormalCollections).mockResolvedValue([
+                { id: 1, type: "normal", owner: { id: 1 } } as any,
+            ]);
+
+            const result = await removeSelectedSimilarImageGroups(
+                [group],
+                vi.fn(),
+            );
+
+            // Item 1 (id=1) should be deleted because it was strictly selected
+            // Item 2 (id=2) should be retained because it was deselected
+            expect(result.deletedFileIDs).toEqual(new Set([1]));
+
+            // Group should be fully removed (only 1 item remains)
+            expect(result.fullyRemovedGroupIDs.has("group1")).toBe(true);
+        });
     });
 });
