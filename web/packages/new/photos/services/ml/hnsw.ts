@@ -536,14 +536,15 @@ export const getCLIPHNSWIndex = async (
         ? Math.ceil(requiredCapacity / 10000) * 10000
         : 100000;
 
-    // If we need more capacity than current index, recreate it
+    // If we need more capacity than current index, OR if we need an uninitialized
+    // index (skipInit=true) to load from disk, recreate it.
     if (
         _clipHNSWIndex &&
-        requiredCapacity &&
-        capacity > _clipHNSWIndex.getMaxElements()
+        ((requiredCapacity && capacity > _clipHNSWIndex.getMaxElements()) ||
+            skipInit)
     ) {
         console.log(
-            `[HNSW] Recreating index with larger capacity: ${capacity}`,
+            `[HNSW] Recreating index (capacity=${capacity}, skipInit=${skipInit})`,
         );
         _clipHNSWIndex.destroy();
         _clipHNSWIndex = null;
