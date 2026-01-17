@@ -123,6 +123,10 @@ export interface SimilarImagesResult {
     computationTimeMs: number;
 }
 
+export const CATEGORY_THRESHOLD_CLOSE = 0.001;
+export const CATEGORY_THRESHOLD_SIMILAR = 0.02;
+export const CATEGORY_THRESHOLD_RELATED = 0.04;
+
 /**
  * Cached similar images result stored in IndexedDB.
  */

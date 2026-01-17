@@ -307,10 +307,19 @@ export const calculateFreedSpace = (groups: SimilarImageGroup[]): number => {
     for (const group of groups) {
         if (group.isSelected) {
             // Full group selection
-            // Calculate space freed by removing all but the first (retained) file
-            // Note: This is an estimation. The actual retained file might be different
-            // (e.g. largest, favorite), but without async collection checks we can't be sure.
-            // Using the largest file as the retained one is the most conservative estimate for freed space.
+            // Calculate space freed by removing all but one retained file.
+            //
+            // IMPORTANT: This uses the largest file as the retained file for estimation purposes.
+            // The actual retention logic in similarImageGroupItemToRetain() prioritizes:
+            //   1. Favorited files
+            //   2. Files with captions
+            //   3. Files with edited name/time
+            //   4. Larger file sizes
+            //
+            // Since we can't asynchronously check collections/favorites here (reducer context),
+            // we use largest-file estimation as a CONSERVATIVE approach: if a smaller favorited
+            // file is actually retained, we'll free MORE space than displayed, which is
+            // preferable to overpromising and underdelivering.
             const sortedItems = [...group.items].sort(
                 (a, b) =>
                     (b.file.info?.fileSize || 0) - (a.file.info?.fileSize || 0),

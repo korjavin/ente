@@ -437,9 +437,6 @@ export const saveFaceClusters = async (clusters: FaceCluster[]) => {
 /**
  * Generate a cache key for similar images based on threshold and file IDs.
  */
-/**
- * Generate a cache key for similar images based on threshold and file IDs.
- */
 const getSimilarImagesCacheKey = (
     distanceThreshold: number,
     fileIDs: number[],
@@ -452,9 +449,6 @@ const getSimilarImagesCacheKey = (
     )}_v${clipIndexingVersion}`;
 };
 
-/**
- * Simple string hash function for cache keys.
- */
 /**
  * Simple string hash function for cache keys.
  */

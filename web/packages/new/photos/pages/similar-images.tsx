@@ -53,10 +53,12 @@ import {
     type ThumbnailGridLayoutParams,
 } from "../components/utils/thumbnail-grid-layout";
 import {
-
     filterGroupsByCategory,
     getSimilarImages,
 } from "../services/similar-images";
+import {
+    CATEGORY_THRESHOLD_RELATED,
+} from "../services/similar-images-types";
 import {
     calculateDeletedFileCount,
     calculateFreedSpace,
@@ -77,15 +79,14 @@ const Page: React.FC = () => {
     const analyze = useCallback(() => {
         dispatch({ type: "analyze" });
         void getSimilarImages({
-            distanceThreshold: 0.04, // Fixed threshold, filter client-side
+            distanceThreshold: CATEGORY_THRESHOLD_RELATED, // Max threshold, filter client-side by category
             onProgress: (progress) =>
                 dispatch({ type: "setAnalysisProgress", progress }),
         })
-            .then(({ groups, computationTimeMs }) =>
+            .then(({ groups }) =>
                 dispatch({
                     type: "analysisCompleted",
                     groups,
-                    computationTimeMs,
                 }),
             )
             .catch((e: unknown) => {
@@ -131,7 +132,7 @@ const Page: React.FC = () => {
         switch (state.analysisStatus) {
             case undefined:
             case "started":
-                return <Loading progress={state.analysisProgress} />;
+                return <Loading />;
             case "failed":
                 return <LoadFailed />;
             case "completed":
@@ -212,8 +213,6 @@ interface SimilarImagesState {
     deletableSize: number;
     /** If a remove is in progress, then this will indicate its progress percentage. */
     removeProgress: number | undefined;
-    /** Time taken for the last analysis in ms. */
-    computationTimeMs: number;
 }
 
 type SimilarImagesAction =
@@ -223,7 +222,6 @@ type SimilarImagesAction =
     | {
         type: "analysisCompleted";
         groups: SimilarImageGroup[];
-        computationTimeMs: number;
     }
     | { type: "changeSortOrder"; sortOrder: SortOrder }
     | { type: "changeCategoryFilter"; categoryFilter: CategoryFilter }
@@ -249,7 +247,6 @@ const initialSimilarImagesState: SimilarImagesState = {
     deletableCount: 0,
     deletableSize: 0,
     removeProgress: undefined,
-    computationTimeMs: 0,
 };
 
 
@@ -299,7 +296,6 @@ const similarImagesReducer: React.Reducer<
                 allSimilarImageGroups,
                 deletableCount,
                 deletableSize,
-                computationTimeMs: action.computationTimeMs,
                 analysisProgress: 100,
             };
         }
@@ -602,11 +598,7 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({ onDeselectAll }) => (
     </OverflowMenu>
 );
 
-interface LoadingProps {
-    progress: number;
-}
-
-const Loading: React.FC<LoadingProps> = () => (
+const Loading: React.FC = () => (
     <CenteredFill>
         <ActivityIndicator />
     </CenteredFill>
@@ -804,12 +796,16 @@ const SimilarImagesList: React.FC<SimilarImagesListProps> = ({
 
     const itemCount = similarImageGroups.length;
 
+    // Height constants for group list items
+    // Breakdown: paddingBlockStart(24) + checkbox(42) + paddingBlock(4) + divider(1) + paddingBlockEnd(20) + itemPadding(16)
+    const GROUP_HEADER_HEIGHT = 24 + 42 + 4 + 1 + 20 + 16;
+
     const itemSize = useCallback(
         (index: number) => {
             const group = similarImageGroups[index];
             if (!group) return 0;
 
-            const fixedHeight = 24 + 42 + 4 + 1 + 20 + 16; // Header + divider + padding
+            const fixedHeight = GROUP_HEADER_HEIGHT;
             const isExpanded = expandedGroups.has(group.id);
 
             let cellCount = group.items.length;
