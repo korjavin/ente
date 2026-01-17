@@ -386,8 +386,13 @@ const similarImagesReducer: React.Reducer<
                 deletableItems.length > 0 &&
                 deletableItems.every((i) => i.isSelected);
 
+            // Recompute filtered groups from updatedAllGroups to get accurate stats
+            const updatedFilteredGroups = filterGroupsByCategory(
+                updatedAllGroups,
+                state.categoryFilter,
+            );
             const { deletableCount, deletableSize } =
-                calculateDeletableStats(filteredGroups);
+                calculateDeletableStats(updatedFilteredGroups);
             return {
                 ...state,
                 allSimilarImageGroups: updatedAllGroups,
@@ -711,6 +716,10 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                     progress={removeProgress}
                     onRemove={onRemoveSimilarImages}
                 />
+            </Stack>
+        </Stack>
+    );
+};
 
 interface CategoryTabsProps {
     categoryFilter: CategoryFilter;
@@ -963,12 +972,12 @@ const ItemGrid = styled("div", {
     shouldForwardProp: (prop) => prop != "layoutParams",
 })<SimilarImagesItemGridProps>(
     ({ layoutParams }) => `
-    display: grid;
-    padding-inline: ${layoutParams.paddingInline}px;
-    grid-template-columns: repeat(${layoutParams.columns}, ${layoutParams.itemWidth}px);
-    grid-auto-rows: ${layoutParams.itemHeight}px;
-    gap: ${layoutParams.gap}px;
-`,
+                                                display: grid;
+                                                padding-inline: ${layoutParams.paddingInline}px;
+                                                grid-template-columns: repeat(${layoutParams.columns}, ${layoutParams.itemWidth}px);
+                                                grid-auto-rows: ${layoutParams.itemHeight}px;
+                                                gap: ${layoutParams.gap}px;
+                                                `,
 );
 
 const GroupContent: React.FC<GroupContentProps> = ({
