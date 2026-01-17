@@ -810,5 +810,6 @@
     "no_similar_images_found": "No similar images found",
     "no_category_images_found": "No {{category}} images found",
     "try_checking_other_categories": "Try checking other categories",
-    "deleting_similar_images": "Deleting similar images..."
+    "deleting_similar_images": "Deleting similar images...",
+    "remove_similar_images_count": "Remove {{count}} photos"
 }

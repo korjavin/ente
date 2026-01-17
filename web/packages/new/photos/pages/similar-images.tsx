@@ -12,6 +12,7 @@ import {
     styled,
     Tab,
     Tabs,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import { useRedirectIfNeedsCredentials } from "ente-accounts/components/utils/use-redirect";
@@ -169,9 +170,6 @@ const Page: React.FC = () => {
                             deletableSize={state.deletableSize}
                             removeProgress={state.removeProgress}
                             onRemoveSimilarImages={handleRemoveSimilarImages}
-                            onToggleSelectAll={() =>
-                                dispatch({ type: "toggleSelectAll" })
-                            }
                         />
                     );
                 }
@@ -562,7 +560,14 @@ const SortMenu: React.FC<SortMenuProps> = ({
     sortOrder,
     onChangeSortOrder,
 }) => (
-    <OverflowMenu ariaID="similar-images-sort" triggerButtonIcon={<SortIcon />}>
+    <OverflowMenu
+        ariaID="similar-images-sort"
+        triggerButtonIcon={
+            <Tooltip title={t("sort_by")}>
+                <SortIcon />
+            </Tooltip>
+        }
+    >
         <OverflowMenuOption
             endIcon={sortOrder == "size" ? <DoneIcon /> : undefined}
             onClick={() => onChangeSortOrder("size")}
@@ -601,19 +606,9 @@ interface LoadingProps {
     progress: number;
 }
 
-const Loading: React.FC<LoadingProps> = ({ progress }) => (
+const Loading: React.FC<LoadingProps> = () => (
     <CenteredFill>
-        <Stack spacing={2} alignItems="center" sx={{ width: "300px" }}>
-            <ActivityIndicator />
-            <LinearProgress
-                variant="determinate"
-                value={progress}
-                sx={{ width: "100%" }}
-            />
-            <Typography color="text.secondary" sx={{ textAlign: "center" }}>
-                {t("analyzing_photos_locally")}
-            </Typography>
-        </Stack>
+        <ActivityIndicator />
     </CenteredFill>
 );
 
@@ -674,7 +669,6 @@ interface SimilarImagesProps {
     deletableSize: number;
     removeProgress: number | undefined;
     onRemoveSimilarImages: () => void;
-    onToggleSelectAll: () => void;
 }
 
 const SimilarImages: React.FC<SimilarImagesProps> = ({
@@ -687,11 +681,7 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
     deletableSize,
     removeProgress,
     onRemoveSimilarImages,
-    onToggleSelectAll,
 }) => {
-    const areAllSelected =
-        similarImageGroups.length > 0 &&
-        similarImageGroups.every((g) => g.isSelected);
     const isDeletionInProgress = removeProgress !== undefined;
 
     return (
@@ -716,43 +706,14 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                     )}
                 </Autosizer>
             </Box>
-            <Stack
-                direction="row"
-                spacing={2}
-                sx={{ margin: 2, alignItems: "stretch" }}
-            >
-                <FocusVisibleButton
-                    variant="outlined"
-                    onClick={onToggleSelectAll}
-                    disabled={isDeletionInProgress}
-                    sx={{
-                        flex: 1,
-                        borderColor: "divider",
-                        color: "text.primary",
-                        justifyContent: "flex-start",
-                        paddingLeft: 2,
-                        height: "100%",
-                    }}
-                >
-                    <Checkbox
-                        checked={areAllSelected}
-                        tabIndex={-1}
-                        disableRipple
-                        sx={{ marginRight: 1 }}
-                    />
-                    {areAllSelected
-                        ? t("deselect_all_groups")
-                        : t("select_all_in_groups")}
-                </FocusVisibleButton>
-                <Box sx={{ flex: 1 }}>
-                    <RemoveButton
-                        disabled={deletableCount === 0 || isDeletionInProgress}
-                        deletableCount={deletableCount}
-                        deletableSize={deletableSize}
-                        progress={removeProgress}
-                        onRemove={onRemoveSimilarImages}
-                    />
-                </Box>
+            <Stack sx={{ margin: 1 }}>
+                <RemoveButton
+                    disabled={deletableCount === 0 || isDeletionInProgress}
+                    deletableCount={deletableCount}
+                    deletableSize={deletableSize}
+                    progress={removeProgress}
+                    onRemove={onRemoveSimilarImages}
+                />
             </Stack>
 
 
@@ -919,6 +880,8 @@ const SimilarImagesListRow = memo(
         const group = similarImageGroups[index]!;
         const { isSelected } = group;
 
+        const hideDivider = layoutParams.isSmallerLayout;
+
         return (
             <Box style={style}>
                 <GroupHeader
@@ -926,7 +889,12 @@ const SimilarImagesListRow = memo(
                     isSelected={isSelected}
                     onToggle={() => onToggleSelection(index)}
                 />
-                <Divider sx={{ marginX: 1 }} />
+                <Divider
+                    sx={[
+                        { marginX: 1 },
+                        hideDivider ? { opacity: 0 } : { opacity: 0.8 },
+                    ]}
+                />
                 <GroupContent
                     group={group}
                     groupIndex={index}
@@ -957,25 +925,27 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 
     return (
         <SpacedRow sx={{ padding: 1 }}>
-            <Checkbox checked={isSelected} onChange={onToggle} />
-            <Ellipsized2LineTypography sx={{ flex: 1 }}>
-                {items.length} {t("photos")}
-            </Ellipsized2LineTypography>
-            <Typography variant="body" color="text.secondary">
-                {t("similarity")}:{" "}
-                {(100 * (1 - group.furthestDistance)).toFixed(0)}%
-            </Typography>
-            <Typography variant="body" color="text.secondary">
-                {formattedByteSize(totalSize)}
-            </Typography>
-            {deletableCount > 0 && (
-                <Typography variant="body" color="error.main">
-                    -
-                    {formattedByteSize(
-                        totalSize - (items[0]?.file.info?.fileSize || 0),
-                    )}
+            <Stack direction="row" spacing={2} alignItems="baseline" sx={{ flex: 1 }}>
+                <Typography color={isSelected ? "text.primary" : "text.secondary"}>
+                    {items.length} {t("photos")}
                 </Typography>
-            )}
+                <Typography variant="body" color="text.secondary">
+                    {t("similarity")}:{" "}
+                    {(100 * (1 - group.furthestDistance)).toFixed(0)}%
+                </Typography>
+                <Typography variant="body" color="text.secondary">
+                    {formattedByteSize(totalSize)}
+                </Typography>
+                {deletableCount > 0 && (
+                    <Typography variant="body" color="error.main">
+                        -
+                        {formattedByteSize(
+                            totalSize - (items[0]?.file.info?.fileSize || 0),
+                        )}
+                    </Typography>
+                )}
+            </Stack>
+            <Checkbox checked={isSelected} onChange={onToggle} />
         </SpacedRow>
     );
 };
@@ -1132,29 +1102,38 @@ const RemoveButton: React.FC<RemoveButtonProps> = ({
     onRemove,
 }) => (
     <FocusVisibleButton
-        variant="contained"
+        sx={{ minWidth: "min(100%, 320px)", margin: "auto" }}
         disabled={disabled}
         onClick={onRemove}
-        sx={{
-            width: "100%",
-            height: "100%",
-            justifyContent: "space-between",
-            paddingX: 3,
-            minHeight: "48px",
-            bgcolor: "error.main",
-            "&:hover": { bgcolor: "error.dark" },
-        }}
     >
-        <span>{t("remove")}</span>
-        <span>
-            {deletableCount} {t("photos")} ({formattedByteSize(deletableSize)})
-        </span>
-        {progress !== undefined && (
-            <LinearProgress
-                variant="determinate"
-                value={progress}
-                sx={{ width: "100px" }}
-            />
-        )}
+        <Stack
+            sx={{
+                gap: 1,
+                // Prevent a layout shift by giving a minHeight that is larger
+                // than all expected states.
+                minHeight: "45px",
+                justifyContent: "center",
+                flex: 1,
+            }}
+        >
+            {progress !== undefined ? (
+                <LinearProgress
+                    sx={{ borderRadius: "4px" }}
+                    variant={progress === 0 ? "indeterminate" : "determinate"}
+                    value={progress}
+                />
+            ) : (
+                <>
+                    <Typography>
+                        {t("remove_similar_images_count", {
+                            count: deletableCount,
+                        })}
+                    </Typography>
+                    <Typography variant="small" fontWeight="regular">
+                        {formattedByteSize(deletableSize)}
+                    </Typography>
+                </>
+            )}
+        </Stack>
     </FocusVisibleButton>
 );
