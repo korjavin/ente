@@ -53,7 +53,11 @@ import {
     computeThumbnailGridLayoutParams,
     type ThumbnailGridLayoutParams,
 } from "../components/utils/thumbnail-grid-layout";
-import { getSimilarImages } from "../services/similar-images";
+import {
+    CATEGORY_THRESHOLD_CLOSE,
+    CATEGORY_THRESHOLD_SIMILAR,
+    getSimilarImages,
+} from "../services/similar-images";
 import { removeSelectedSimilarImageGroups } from "../services/similar-images-delete";
 import type { SimilarImageGroup } from "../services/similar-images-types";
 
@@ -248,25 +252,25 @@ const initialSimilarImagesState: SimilarImagesState = {
     computationTimeMs: 0,
 };
 
-// Thresholds matching mobile implementation
-const CLOSE_THRESHOLD = 0.001;
-const SIMILAR_THRESHOLD = 0.04;
-
 const filterGroupsByCategory = (
     groups: SimilarImageGroup[],
     category: CategoryFilter,
 ): SimilarImageGroup[] => {
     switch (category) {
         case "close":
-            return groups.filter((g) => g.furthestDistance <= CLOSE_THRESHOLD);
+            return groups.filter(
+                (g) => g.furthestDistance <= CATEGORY_THRESHOLD_CLOSE,
+            );
         case "similar":
             return groups.filter(
                 (g) =>
-                    g.furthestDistance > CLOSE_THRESHOLD &&
-                    g.furthestDistance <= SIMILAR_THRESHOLD,
+                    g.furthestDistance > CATEGORY_THRESHOLD_CLOSE &&
+                    g.furthestDistance <= CATEGORY_THRESHOLD_SIMILAR,
             );
         case "related":
-            return groups.filter((g) => g.furthestDistance > SIMILAR_THRESHOLD);
+            return groups.filter(
+                (g) => g.furthestDistance > CATEGORY_THRESHOLD_SIMILAR,
+            );
     }
 };
 

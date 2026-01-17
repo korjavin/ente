@@ -38,6 +38,20 @@ import type {
 const DEFAULT_DISTANCE_THRESHOLD = 0.04;
 
 /**
+ * Category threshold constants for filtering similar images.
+ *
+ * These values match the mobile implementation and define boundaries
+ * for categorizing similarity levels:
+ * - CLOSE: Nearly identical images (≤ 0.001 distance)
+ * - SIMILAR: Visually similar images (0.001 < distance ≤ 0.02)
+ * - RELATED: Related but distinct images (distance > 0.02)
+ *
+ * Based on CLIP embedding cosine distance where 0 = identical, 2 = opposite.
+ */
+export const CATEGORY_THRESHOLD_CLOSE = 0.001;
+export const CATEGORY_THRESHOLD_SIMILAR = 0.02;
+
+/**
  * Cache version for similar images results.
  */
 const CACHE_VERSION = 1;
@@ -706,9 +720,9 @@ export const clearSimilarImagesCache = async () => {
  * Filter groups by category based on their furthest distance.
  *
  * Thresholds match mobile implementation:
- * - Close: ≤ 0.001
- * - Similar: > 0.001 and ≤ 0.02
- * - Related: > 0.02
+ * - Close: ≤ {@link CATEGORY_THRESHOLD_CLOSE}
+ * - Similar: > {@link CATEGORY_THRESHOLD_CLOSE} and ≤ {@link CATEGORY_THRESHOLD_SIMILAR}
+ * - Related: > {@link CATEGORY_THRESHOLD_SIMILAR}
  */
 export const filterGroupsByCategory = (
     groups: SimilarImageGroup[],
@@ -716,15 +730,19 @@ export const filterGroupsByCategory = (
 ): SimilarImageGroup[] => {
     switch (category) {
         case "close":
-            return groups.filter((group) => group.furthestDistance <= 0.001);
+            return groups.filter(
+                (group) => group.furthestDistance <= CATEGORY_THRESHOLD_CLOSE,
+            );
         case "similar":
             return groups.filter(
                 (group) =>
-                    group.furthestDistance > 0.001 &&
-                    group.furthestDistance <= 0.02,
+                    group.furthestDistance > CATEGORY_THRESHOLD_CLOSE &&
+                    group.furthestDistance <= CATEGORY_THRESHOLD_SIMILAR,
             );
         case "related":
-            return groups.filter((group) => group.furthestDistance > 0.02);
+            return groups.filter(
+                (group) => group.furthestDistance > CATEGORY_THRESHOLD_SIMILAR,
+            );
     }
 };
 
