@@ -362,13 +362,23 @@ const similarImagesReducer: React.Reducer<
                 allSimilarImageGroups,
                 state.categoryFilter,
             );
-            const group = filteredGroups[action.groupIndex]!;
-            const items = [...group.items];
-            const item = items[action.itemIndex]!;
+            const group = { ...filteredGroups[action.groupIndex]! }; // Shallow copy group
+            const items = [...group.items]; // Shallow copy items array
+            const item = { ...items[action.itemIndex]! }; // Shallow copy item
 
-            // Toggle item
+            // Toggle item (on the copy)
             item.isSelected = !item.isSelected;
-            group.items = items;
+            items[action.itemIndex] = item; // Update items array with new item
+            group.items = items; // Update group with new items array
+
+            // Update the group in the allSimilarImageGroups array
+            // Optimization: filteredGroups is derived, but we need to update the source
+            // Since we don't know the index in allSimilarImageGroups easily without searching,
+            // we can fallback to mapping. Or since we know filteredGroups is a subset,
+            // we can find the group by ID.
+            const updatedAllGroups = allSimilarImageGroups.map(g =>
+                g.id === group.id ? group : g
+            );
 
             // Update group selection state (checked if all deletable items are selected)
             // We ignore the first item for "group selected" definition typically
@@ -381,7 +391,7 @@ const similarImagesReducer: React.Reducer<
                 calculateDeletableStats(filteredGroups);
             return {
                 ...state,
-                allSimilarImageGroups,
+                allSimilarImageGroups: updatedAllGroups,
                 deletableCount,
                 deletableSize,
             };

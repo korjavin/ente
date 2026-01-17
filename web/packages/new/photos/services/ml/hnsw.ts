@@ -314,6 +314,8 @@ export class HNSWIndex {
         console.log(`[HNSW] Sync completed, waiting for persistence...`);
 
         // Wait a bit more to ensure persistence is complete
+        // Emscripten's syncfs is asynchronous but the callback firing doesn't strict guarantee persistence to disk 
+        // in some browsers immediately. This delay helps stability.
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Verify file still exists after sync
@@ -449,13 +451,19 @@ export class HNSWIndex {
      * Actual file existence is checked during loadIndex via try/catch.
      */
     async hasSavedIndex(): Promise<boolean> {
+        if (!this.lib) {
+            // If lib is not loaded, we can't check file existence
+            await this.init(true);
+        }
+        if (!this.lib) return false;
+
         try {
             await syncFileSystem("read");
-            // Try to access the file (will throw if not found)
-            // Note: We'd need access to FS API to check file existence
-            // For now, we'll rely on try/catch in loadIndex
-            return true;
-        } catch {
+            // Check specific filename
+            const filename = "clip_hnsw.bin";
+            return this.lib.EmscriptenFileSystemManager.checkFileExists(filename);
+        } catch (e) {
+            console.warn("[HNSW] Failed to check for saved index:", e);
             return false;
         }
     }
