@@ -3,10 +3,8 @@ import DoneIcon from "@mui/icons-material/Done";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import SortIcon from "@mui/icons-material/Sort";
 import {
-    Backdrop,
     Box,
     Checkbox,
-    CircularProgress,
     Divider,
     IconButton,
     LinearProgress,
@@ -54,11 +52,15 @@ import {
     type ThumbnailGridLayoutParams,
 } from "../components/utils/thumbnail-grid-layout";
 import {
-    CATEGORY_THRESHOLD_CLOSE,
-    CATEGORY_THRESHOLD_SIMILAR,
+
+    filterGroupsByCategory,
     getSimilarImages,
 } from "../services/similar-images";
-import { removeSelectedSimilarImageGroups } from "../services/similar-images-delete";
+import {
+    calculateDeletedFileCount,
+    calculateFreedSpace,
+    removeSelectedSimilarImageGroups,
+} from "../services/similar-images-delete";
 import type { SimilarImageGroup } from "../services/similar-images-types";
 
 const Page: React.FC = () => {
@@ -252,27 +254,7 @@ const initialSimilarImagesState: SimilarImagesState = {
     computationTimeMs: 0,
 };
 
-const filterGroupsByCategory = (
-    groups: SimilarImageGroup[],
-    category: CategoryFilter,
-): SimilarImageGroup[] => {
-    switch (category) {
-        case "close":
-            return groups.filter(
-                (g) => g.furthestDistance <= CATEGORY_THRESHOLD_CLOSE,
-            );
-        case "similar":
-            return groups.filter(
-                (g) =>
-                    g.furthestDistance > CATEGORY_THRESHOLD_CLOSE &&
-                    g.furthestDistance <= CATEGORY_THRESHOLD_SIMILAR,
-            );
-        case "related":
-            return groups.filter(
-                (g) => g.furthestDistance > CATEGORY_THRESHOLD_SIMILAR,
-            );
-    }
-};
+
 
 const similarImagesReducer: React.Reducer<
     SimilarImagesState,
@@ -521,19 +503,10 @@ const sortedCopyOfSimilarImageGroups = (
     });
 
 const calculateDeletableStats = (groups: SimilarImageGroup[]) => {
-    let deletableCount = 0;
-    let deletableSize = 0;
-
-    for (const group of groups) {
-        for (const item of group.items) {
-            if (item.isSelected) {
-                deletableCount += 1;
-                deletableSize += item.file.info?.fileSize || 0;
-            }
-        }
-    }
-
-    return { deletableCount, deletableSize };
+    return {
+        deletableCount: calculateDeletedFileCount(groups),
+        deletableSize: calculateFreedSpace(groups),
+    };
 };
 
 interface NavbarProps {
@@ -772,41 +745,7 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                 </Box>
             </Stack>
 
-            {/* Deletion progress overlay */}
-            <Backdrop
-                open={isDeletionInProgress}
-                sx={{
-                    color: "#fff",
-                    zIndex: (theme) => theme.zIndex.drawer + 1,
-                    flexDirection: "column",
-                    gap: 2,
-                }}
-            >
-                <CircularProgress color="inherit" size={60} />
-                <Typography variant="h6">{t("deleting_similar_images")}</Typography>
-                {removeProgress !== undefined && (
-                    <Box sx={{ width: "300px" }}>
-                        <LinearProgress
-                            variant="determinate"
-                            value={removeProgress}
-                            sx={{
-                                height: 8,
-                                borderRadius: 4,
-                                bgcolor: "rgba(255, 255, 255, 0.2)",
-                                "& .MuiLinearProgress-bar": {
-                                    bgcolor: "white",
-                                },
-                            }}
-                        />
-                        <Typography
-                            variant="body"
-                            sx={{ textAlign: "center", mt: 1 }}
-                        >
-                            {Math.round(removeProgress)}%
-                        </Typography>
-                    </Box>
-                )}
-            </Backdrop>
+
         </Stack>
     );
 };
@@ -936,6 +875,7 @@ const SimilarImagesList: React.FC<SimilarImagesListProps> = ({
             height={height}
             itemCount={itemCount}
             itemSize={itemSize}
+            itemKey={(index) => similarImageGroups[index]?.id || index}
             itemData={itemData}
         >
             {SimilarImagesListRow}
@@ -1080,18 +1020,19 @@ const GroupContent: React.FC<GroupContentProps> = ({
                     <ItemCard
                         TileComponent={DuplicateItemTile}
                         coverFile={item.file}
-                        sx={{
-                            // Visual feedback for selected items: darken the image
-                            filter: item.isSelected
-                                ? "brightness(0.5)"
+                        sx={(theme) => ({
+                            // Visual feedback for selected items:
+                            // Match 'duplicates' behavior: opacity 0.5 and border
+                            opacity: item.isSelected ? 0.5 : 1,
+                            outline: item.isSelected
+                                ? `2px solid ${theme.vars.palette.primary.main}`
                                 : "none",
-                            transition: "filter 0.2s ease-in-out",
+                            transition:
+                                "opacity 0.2s ease-in-out, outline 0.2s ease-in-out",
                             "&:hover": {
-                                filter: item.isSelected
-                                    ? "brightness(0.4)"
-                                    : "brightness(0.9)",
+                                opacity: item.isSelected ? 0.4 : 0.9,
                             },
-                        }}
+                        })}
                     >
                         <Box
                             sx={{
@@ -1136,29 +1077,32 @@ const GroupContent: React.FC<GroupContentProps> = ({
                         </TileBottomTextOverlay>
                     </ItemCard>
                 </Box>
-            ))}
-            {remainingCount > 0 && !isExpanded && (
-                <Box
-                    sx={{
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "rgba(128, 128, 128, 0.2)",
-                        borderRadius: 1,
-                        cursor: "pointer",
-                        "&:hover": {
-                            backgroundColor: "rgba(128, 128, 128, 0.3)",
-                        },
-                    }}
-                    onClick={onToggleExpanded}
-                >
-                    <Typography variant="h6" color="text.secondary">
-                        +{remainingCount} {t("more")}
-                    </Typography>
-                </Box>
-            )}
-        </ItemGrid>
+            ))
+            }
+            {
+                remainingCount > 0 && !isExpanded && (
+                    <Box
+                        sx={{
+                            position: "relative",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "rgba(128, 128, 128, 0.2)",
+                            borderRadius: 1,
+                            cursor: "pointer",
+                            "&:hover": {
+                                backgroundColor: "rgba(128, 128, 128, 0.3)",
+                            },
+                        }}
+                        onClick={onToggleExpanded}
+                    >
+                        <Typography variant="h6" color="text.secondary">
+                            +{remainingCount} {t("more")}
+                        </Typography>
+                    </Box>
+                )
+            }
+        </ItemGrid >
     );
 };
 

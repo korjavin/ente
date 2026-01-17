@@ -107,6 +107,10 @@ export const removeSelectedSimilarImageGroups = async (
 
     // Handle individual item selections
     for (const group of groupsWithIndividualSelections) {
+        // Find the "best" item to retain from the ones NOT selected for deletion
+        // We use this item to preserve collection membership
+        const retainedItem = await similarImageGroupItemToRetain(group);
+
         for (const item of group.items) {
             if (!item.isSelected) continue;
 
@@ -116,8 +120,20 @@ export const removeSelectedSimilarImageGroups = async (
             );
             if (isFavorited) continue;
 
-            // Simply move individually selected items to trash
-            // No symlink creation needed since we're not retaining anything
+            // Collect collections this file belongs to
+            // Remove existing collections from the set (symlink already exists)
+            const collectionIDs = item.collectionIDs.difference(
+                retainedItem.collectionIDs,
+            );
+
+            // Add the retained file to these collections
+            for (const collectionID of collectionIDs) {
+                filesToAdd.set(collectionID, [
+                    ...(filesToAdd.get(collectionID) ?? []),
+                    retainedItem.file,
+                ]);
+            }
+
             filesToTrash.push(item.file);
         }
     }
@@ -289,11 +305,26 @@ export const calculateFreedSpace = (groups: SimilarImageGroup[]): number => {
     let freedSpace = 0;
 
     for (const group of groups) {
-        if (!group.isSelected) continue;
-
-        // Calculate space freed by removing all but the first (retained) file
-        const retainedFileSize = group.items[0]?.file.info?.fileSize || 0;
-        freedSpace += group.totalSize - retainedFileSize;
+        if (group.isSelected) {
+            // Full group selection
+            // Calculate space freed by removing all but the first (retained) file
+            // Note: This is an estimation. The actual retained file might be different
+            // (e.g. largest, favorite), but without async collection checks we can't be sure.
+            // Using the largest file as the retained one is the most conservative estimate for freed space.
+            const sortedItems = [...group.items].sort(
+                (a, b) =>
+                    (b.file.info?.fileSize || 0) - (a.file.info?.fileSize || 0),
+            );
+            const retainedFileSize = sortedItems[0]?.file.info?.fileSize || 0;
+            freedSpace += group.totalSize - retainedFileSize;
+        } else {
+            // Check for individual item selections
+            for (const item of group.items) {
+                if (item.isSelected) {
+                    freedSpace += item.file.info?.fileSize || 0;
+                }
+            }
+        }
     }
 
     return freedSpace;
@@ -308,9 +339,17 @@ export const calculateDeletedFileCount = (
     let count = 0;
 
     for (const group of groups) {
-        if (!group.isSelected) continue;
-        // All files except the first (retained) one
-        count += Math.max(0, group.items.length - 1);
+        if (group.isSelected) {
+            // All files except the first (retained) one
+            count += Math.max(0, group.items.length - 1);
+        } else {
+            // Check for individual item selections
+            for (const item of group.items) {
+                if (item.isSelected) {
+                    count++;
+                }
+            }
+        }
     }
 
     return count;

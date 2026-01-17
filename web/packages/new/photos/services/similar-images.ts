@@ -3,7 +3,11 @@ import { newID } from "ente-base/id";
 import type { EnteFile } from "ente-media/file";
 import { FileType } from "ente-media/file-type";
 import { createCollectionNameByID, savedNormalCollections } from "./collection";
-import { clearCachedCLIPIndexes, getCLIPIndexes } from "./ml/clip";
+import {
+    clearCachedCLIPIndexes,
+    clipIndexingVersion,
+    getCLIPIndexes,
+} from "./ml/clip";
 import {
     clearHNSWIndexMetadata,
     clearSimilarImagesCache as clearSimilarImagesCacheInDB,
@@ -359,7 +363,10 @@ const groupSimilarImagesHNSW = async (
             );
 
             indexLoaded = false;
-        } else if (cachedMetadata.fileIDHash === currentFileIDHash) {
+        } else if (
+            cachedMetadata.fileIDHash === currentFileIDHash &&
+            cachedMetadata.clipModelVersion === clipIndexingVersion
+        ) {
             // No changes, just load the cached index
             console.log(`[Similar Images] Loading index from IDBFS...`);
             // CRITICAL: Use the exact maxElements from when the index was saved
@@ -456,6 +463,7 @@ const groupSimilarImagesHNSW = async (
                         maxElements: index.getMaxElements(),
                         createdAt: Date.now(),
                         filename: indexFilename,
+                        clipModelVersion: clipIndexingVersion,
                     });
                     console.log(`[Similar Images] Updated index saved`);
                 }
@@ -531,6 +539,7 @@ const groupSimilarImagesHNSW = async (
                 maxElements: index.getMaxElements(),
                 createdAt: Date.now(),
                 filename: indexFilename,
+                clipModelVersion: clipIndexingVersion,
             });
 
             console.log(`[Similar Images] Index saved successfully`);

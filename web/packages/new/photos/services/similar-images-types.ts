@@ -103,9 +103,9 @@ export interface SimilarImagesOptions {
  * Category for filtering similar images groups.
  *
  * Based on distance thresholds:
- * - CLOSE: Very similar images (distance < 0.02)
- * - SIMILAR: Moderately similar images (0.02 <= distance < 0.04)
- * - RELATED: Loosely related images (0.04 <= distance < 0.08)
+ * - CLOSE: Very similar images (distance <= 0.001)
+ * - SIMILAR: Moderately similar images (0.001 < distance <= 0.02)
+ * - RELATED: Related but distinct images (distance > 0.02)
  */
 export enum SimilarImageCategory {
     CLOSE = "close",
@@ -209,5 +209,13 @@ export interface CachedHNSWIndexMetadata {
     /**
      * Filename of the index in IDBFS.
      */
+    /**
+     * Filename of the index in IDBFS.
+     */
     filename: string;
+    /**
+     * Version of the CLIP model used to generate the embeddings.
+     * Used to invalidate the index if the model changes.
+     */
+    clipModelVersion?: number;
 }

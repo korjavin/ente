@@ -507,8 +507,18 @@ export class HNSWIndex {
      * Clean up resources.
      */
     destroy(): void {
-        // Note: HierarchicalNSW doesn't have a delete() method in the type definitions
-        // The index will be garbage collected when the reference is cleared
+        // Attempt to free WASM memory
+        if (this.index) {
+            try {
+                // @ts-ignore - delete() exists on the C++ handle but may be missing from types
+                if (typeof this.index.delete === "function") {
+                    // @ts-ignore
+                    this.index.delete();
+                }
+            } catch (e) {
+                console.warn("[HNSW] Failed to delete index WASM handle:", e);
+            }
+        }
         this.index = null;
         this.lib = null;
         this.fileIDToLabel.clear();
@@ -521,6 +531,7 @@ export class HNSWIndex {
  * Lazily initialized on first use.
  */
 let _clipHNSWIndex: HNSWIndex | null = null;
+let _initPromise: Promise<HNSWIndex> | null = null;
 
 /**
  * Get or create the global CLIP HNSW index.
@@ -535,6 +546,11 @@ export const getCLIPHNSWIndex = async (
     const capacity = requiredCapacity
         ? Math.ceil(requiredCapacity / 10000) * 10000
         : 100000;
+
+    // Wait for any pending initialization to complete
+    if (_initPromise) {
+        await _initPromise;
+    }
 
     // If we need more capacity than current index, OR if we need an uninitialized
     // index (skipInit=true) to load from disk, recreate it.
@@ -552,14 +568,24 @@ export const getCLIPHNSWIndex = async (
 
     if (!_clipHNSWIndex) {
         console.log(`[HNSW] Creating new index with capacity: ${capacity}`);
-        _clipHNSWIndex = new HNSWIndex(
-            512, // CLIP embedding dimension
-            capacity,
-            16, // M parameter - good balance
-            200, // efConstruction - good quality
-            50, // efSearch - good accuracy
-        );
-        await _clipHNSWIndex.init(skipInit);
+        // Use a promise to serialize concurrent requests
+        _initPromise = (async () => {
+            const index = new HNSWIndex(
+                512, // CLIP embedding dimension
+                capacity,
+                16, // M parameter - good balance
+                200, // efConstruction - good quality
+                50, // efSearch - good accuracy
+            );
+            await index.init(skipInit);
+            return index;
+        })();
+
+        try {
+            _clipHNSWIndex = await _initPromise;
+        } finally {
+            _initPromise = null;
+        }
     }
     return _clipHNSWIndex;
 };
