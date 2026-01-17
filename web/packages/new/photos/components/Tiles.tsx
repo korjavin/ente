@@ -1,5 +1,11 @@
 import AddIcon from "@mui/icons-material/Add";
-import { Stack, styled, Typography } from "@mui/material";
+import {
+    Stack,
+    styled,
+    Typography,
+    type SxProps,
+    type Theme,
+} from "@mui/material";
 import { CenteredFill, Overlay } from "ente-base/components/containers";
 import type { ButtonishProps } from "ente-base/components/mui";
 import log from "ente-base/log";
@@ -39,6 +45,10 @@ interface ItemCardProps {
      * Optional click handler.
      */
     onClick?: () => void;
+    /**
+     * Optional styling overrides.
+     */
+    sx?: SxProps<Theme>;
 }
 
 /**
@@ -61,6 +71,7 @@ export const ItemCard: React.FC<React.PropsWithChildren<ItemCardProps>> = ({
     coverFaceID,
     isScrolling,
     onClick,
+    sx,
     children,
 }) => {
     const [coverImageURL, setCoverImageURL] = useState<string | undefined>();
@@ -89,7 +100,7 @@ export const ItemCard: React.FC<React.PropsWithChildren<ItemCardProps>> = ({
     }, [coverFile, coverFaceID, isScrolling]);
 
     return (
-        <TileComponent {...{ onClick }}>
+        <TileComponent {...{ onClick, sx }}>
             {coverFile?.metadata.hasStaticThumbnail ? (
                 <StaticThumbnail fileType={coverFile.metadata.fileType} />
             ) : coverImageURL ? (
@@ -257,13 +268,4 @@ export const TileBottomTextOverlay = styled(Overlay)`
     padding: 6px;
     background: linear-gradient(transparent 30%, 80%, rgba(0 0 0 / 0.7));
     color: white;
-`;
-
-/**
- * An {@link Overlay} for use with large file tiles, providing a container
- * for selection indicators and file size labels.
- */
-export const LargeFileTileOverlay = styled(Overlay)`
-    display: flex;
-    pointer-events: none;
 `;
