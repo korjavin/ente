@@ -221,10 +221,10 @@ type SimilarImagesAction =
     | { type: "setAnalysisProgress"; progress: number }
     | { type: "analysisFailed" }
     | {
-          type: "analysisCompleted";
-          groups: SimilarImageGroup[];
-          computationTimeMs: number;
-      }
+        type: "analysisCompleted";
+        groups: SimilarImageGroup[];
+        computationTimeMs: number;
+    }
     | { type: "changeSortOrder"; sortOrder: SortOrder }
     | { type: "changeCategoryFilter"; categoryFilter: CategoryFilter }
     | { type: "toggleSelection"; index: number }
@@ -235,10 +235,10 @@ type SimilarImagesAction =
     | { type: "setRemoveProgress"; progress: number }
     | { type: "removeFailed" }
     | {
-          type: "removeCompleted";
-          deletedFileIDs: Set<number>;
-          fullyRemovedGroupIDs: Set<string>;
-      };
+        type: "removeCompleted";
+        deletedFileIDs: Set<number>;
+        fullyRemovedGroupIDs: Set<string>;
+    };
 
 const initialSimilarImagesState: SimilarImagesState = {
     analysisStatus: undefined,
@@ -667,14 +667,14 @@ const NoSimilarImagesFound: React.FC<NoSimilarImagesFoundProps> = ({
     return (
         <CenteredFill>
             <Typography color="text.secondary" sx={{ textAlign: "center" }}>
-                No {categoryDisplayName} images found
+                {t("no_category_images_found", { category: categoryDisplayName })}
             </Typography>
             <Typography
                 color="text.secondary"
                 variant="small"
                 sx={{ textAlign: "center", mt: 1 }}
             >
-                Try checking other categories
+                {t("try_checking_other_categories")}
             </Typography>
         </CenteredFill>
     );
@@ -783,7 +783,7 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                 }}
             >
                 <CircularProgress color="inherit" size={60} />
-                <Typography variant="h6">Deleting similar images...</Typography>
+                <Typography variant="h6">{t("deleting_similar_images")}</Typography>
                 {removeProgress !== undefined && (
                     <Box sx={{ width: "300px" }}>
                         <LinearProgress
