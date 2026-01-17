@@ -79,9 +79,9 @@ export interface SimilarImagesOptions {
      * Distance is in [0, 1] where 0 = identical, 1 = completely different.
      * Default: 0.04 (4% difference threshold)
      *
-     * - Close by: 0.00 - 0.02
-     * - Similar: 0.02 - 0.04
-     * - Related: 0.04 - 0.08
+     * - Close by: 0.000 - 0.001
+     * - Similar: 0.001 - 0.020
+     * - Related: 0.020 - 0.040
      */
     distanceThreshold?: number;
     /**
@@ -99,19 +99,7 @@ export interface SimilarImagesOptions {
     onProgress?: (progress: number) => void;
 }
 
-/**
- * Category for filtering similar images groups.
- *
- * Based on distance thresholds:
- * - CLOSE: Very similar images (distance <= 0.001)
- * - SIMILAR: Moderately similar images (0.001 < distance <= 0.02)
- * - RELATED: Related but distinct images (distance > 0.02)
- */
-export enum SimilarImageCategory {
-    CLOSE = "close",
-    SIMILAR = "similar",
-    RELATED = "related",
-}
+
 
 /**
  * Result of the similar images analysis.

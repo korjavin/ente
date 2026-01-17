@@ -12,6 +12,7 @@ import {
     clearHNSWIndexMetadata,
     clearSimilarImagesCache as clearSimilarImagesCacheInDB,
     generateFileIDHash,
+    hashString,
     loadHNSWIndexMetadata,
     loadSimilarImagesCache,
     saveHNSWIndexMetadata,
@@ -244,13 +245,7 @@ export const getSimilarImages = async (
  */
 const hashFileIDs = (fileIDs: number[]): string => {
     const sorted = [...fileIDs].sort((a, b) => a - b).join(",");
-    let hash = 0;
-    for (let i = 0; i < sorted.length; i++) {
-        const char = sorted.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
+    return hashString(sorted);
 };
 
 /**
@@ -673,7 +668,7 @@ const groupSimilarImagesHNSW = async (
  *
  * @param v1 First normalized vector
  * @param v2 Second normalized vector
- * @returns Distance in [0, 1], where 0 = identical, 1 = completely different
+ * @returns Distance in [0, 2], where 0 = identical, 1 = orthogonal, 2 = opposite
  */
 export const cosineDistance = (
     v1: Float32Array | number[],
@@ -858,10 +853,4 @@ const sortGroupItemsByQuality = (
 /**
  * Format file size for display.
  */
-export const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
+

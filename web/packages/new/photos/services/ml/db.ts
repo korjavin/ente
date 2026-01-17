@@ -171,6 +171,9 @@ export const clearMLDB = async () => {
  *
  * It also invalidates the similar images cache and HNSW index metadata because
  * the embedding for this file has changed, making potential search results stale.
+ *
+ * Note: We rely on version/timestamp checks to invalidate caches rather than
+ * aggressively clearing them here (which caused performance regressions).
  */
 export const saveIndexes = async (
     faceIndex: LocalFaceIndex,
@@ -452,7 +455,10 @@ const getSimilarImagesCacheKey = (
 /**
  * Simple string hash function for cache keys.
  */
-const hashString = (str: string): string => {
+/**
+ * Simple string hash function for cache keys.
+ */
+export const hashString = (str: string): string => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         const char = str.charCodeAt(i);
