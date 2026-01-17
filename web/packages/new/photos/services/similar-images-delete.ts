@@ -138,7 +138,41 @@ export const removeSelectedSimilarImageGroups = async (
 
     // Return IDs of deleted files so UI can update
     const deletedFileIDs = new Set(filesToTrash.map((f) => f.id));
-    const fullyRemovedGroupIDs = new Set(selectedGroups.map((g) => g.id));
+
+    // Calculate which groups are fully removed
+    // A group is fully removed only if it would have fewer than 2 items remaining
+    const fullyRemovedGroupIDs = new Set<string>();
+
+    for (const group of selectedGroups) {
+        // Count how many items remain in this group after deletion
+        let remainingCount = 0;
+        for (const item of group.items) {
+            // Item remains if it wasn't deleted
+            if (!deletedFileIDs.has(item.file.id)) {
+                remainingCount++;
+            }
+        }
+
+        // A similar images group needs at least 2 items
+        // If fewer than 2 items remain, the group is fully removed
+        if (remainingCount < 2) {
+            fullyRemovedGroupIDs.add(group.id);
+        }
+    }
+
+    // Also check groups with individual selections
+    for (const group of groupsWithIndividualSelections) {
+        let remainingCount = 0;
+        for (const item of group.items) {
+            if (!deletedFileIDs.has(item.file.id)) {
+                remainingCount++;
+            }
+        }
+
+        if (remainingCount < 2) {
+            fullyRemovedGroupIDs.add(group.id);
+        }
+    }
 
     return { deletedFileIDs, fullyRemovedGroupIDs };
 };
