@@ -4,7 +4,7 @@ import type {
     CachedHNSWIndexMetadata,
     CachedSimilarImages,
 } from "../similar-images-types";
-import type { LocalCLIPIndex } from "./clip";
+import { clipIndexingVersion, type LocalCLIPIndex } from "./clip";
 import type { FaceCluster } from "./cluster";
 import type { LocalFaceIndex } from "./face";
 
@@ -168,6 +168,9 @@ export const clearMLDB = async () => {
  * (No merging is performed, the existing entry is unconditionally overwritten).
  * The file status is also updated to "indexed", and the failure count is reset
  * to 0.
+ *
+ * It also invalidates the similar images cache and HNSW index metadata because
+ * the embedding for this file has changed, making potential search results stale.
  */
 export const saveIndexes = async (
     faceIndex: LocalFaceIndex,
@@ -177,16 +180,28 @@ export const saveIndexes = async (
 
     const db = await mlDB();
     const tx = db.transaction(
-        ["file-status", "face-index", "clip-index"],
+        [
+            "file-status",
+            "face-index",
+            "clip-index",
+            "similar-images-cache",
+            "hnsw-index-metadata",
+        ],
         "readwrite",
     );
 
+    // Invalidate caches since embedding changed
     await Promise.all([
-        tx
-            .objectStore("file-status")
-            .put({ fileID, status: "indexed", failureCount: 0 }),
+        tx.objectStore("file-status").put({
+            fileID,
+            status: "indexed",
+            failureCount: 0,
+        }),
         tx.objectStore("face-index").put(faceIndex),
         tx.objectStore("clip-index").put(clipIndex),
+        // Clear caches to force rebuild with new embedding
+        tx.objectStore("similar-images-cache").clear(),
+        tx.objectStore("hnsw-index-metadata").clear(),
         tx.done,
     ]);
 };
@@ -201,9 +216,7 @@ const newFileStatus = (fileID: number): FileStatus => ({
     failureCount: 0,
 });
 
-/**
- * Return the {@link FaceIndex}, if any, for {@link fileID}.
- */
+
 export const savedFaceIndex = async (fileID: number) => {
     const db = await mlDB();
     return db.get("face-index", fileID);
@@ -424,12 +437,19 @@ export const saveFaceClusters = async (clusters: FaceCluster[]) => {
 /**
  * Generate a cache key for similar images based on threshold and file IDs.
  */
+/**
+ * Generate a cache key for similar images based on threshold and file IDs.
+ */
 const getSimilarImagesCacheKey = (
     distanceThreshold: number,
     fileIDs: number[],
 ): string => {
     const sortedIDs = [...fileIDs].sort((a, b) => a - b).join(",");
-    return `si_${distanceThreshold.toFixed(3)}_${hashString(sortedIDs)}`;
+    // Include the indexing version in the key so we automatically invalidate
+    // existing caches if the embedding code/model changes in a software update.
+    return `si_${distanceThreshold.toFixed(3)}_${hashString(
+        sortedIDs,
+    )}_v${clipIndexingVersion}`;
 };
 
 /**
