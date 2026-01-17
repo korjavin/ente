@@ -15,12 +15,24 @@ import type { SimilarImageGroup } from "./similar-images-types";
  *
  * [Note: Similar Images Deletion Logic]
  *
- * 1. For each selected group, identify the file to retain (prefer files with
- *    captions or edits).
- * 2. For the remaining files, identify user-owned collections they belong to.
- * 3. Add the retained file to those collections as a symlink.
- * 4. Move the other files to trash.
- * 5. Sync local state.
+ * 1. **One Must Remain**: For every selected group, we MUST retain at least one file.
+ *    We never delete an entire group of similar images; at least one "best" photo is kept.
+ *
+ * 2. **Retained Item Selection**:
+ *    - We look for the "best" photo to keep based on: Favorites > Captions > Edits > Size.
+ *    - **Critical**: We filter candidates to only include items NOT explicitly selected
+ *      for deletion by the user.
+ *    - If the user selects the "best" photo, we respect that intent and pick the
+ *      next best unselected photo to keep.
+ *    - **Fallback**: If ALL items are selected, we fall back to the absolute "best"
+ *      photo (ignoring selection) because rule #1 takes precedence.
+ *
+ * 3. For the remaining files (the ones to be deleted):
+ *    - Identify user-owned collections they belong to.
+ *    - Add the *retained* file to those collections (preserves album membership).
+ *    - Move the deleted files to trash.
+ *
+ * 4. Sync local state.
  *
  * @param similarImageGroups A list of similar image groups with selection state.
  * @param onProgress A function called with progress percentage (0-100).
