@@ -239,9 +239,14 @@ const similarImageGroupItemToRetain = async (
         (item) => item.isSelected !== true,
     );
 
-    // If all items are selected, fall back to all items (must retain at least one)
-    const candidateItems =
-        unselectedItems.length > 0 ? unselectedItems : group.items;
+    // If all items are selected, this is an invalid state (must retain at least one)
+    if (unselectedItems.length === 0) {
+        throw new Error(
+            `[Similar Images] Invalid state: All items in group ${group.id} selected for deletion. Must retain at least one item.`,
+        );
+    }
+    
+    const candidateItems = unselectedItems;
 
     const itemsWithFavorites: SimilarImageGroup["items"] = [];
     const itemsWithCaption: SimilarImageGroup["items"] = [];

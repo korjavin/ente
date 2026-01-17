@@ -165,7 +165,11 @@ export const getSimilarImages = async (
     if (!forceRefresh && fileIDs.length > 0) {
         log.info(`[Similar Images] Checking cache...`);
         const cached = await loadSimilarImagesCache(distanceThreshold, fileIDs);
-        if (cached && cached.version === CACHE_VERSION) {
+        if (
+            cached &&
+            cached.version === CACHE_VERSION &&
+            cached.clipModelVersion === clipIndexingVersion
+        ) {
             log.info(`[Similar Images] Cache found, validating...`);
             // Cache hit - verify the cached groups are still valid
             const cachedFileIDs = new Set(cached.fileIDs);
@@ -219,6 +223,7 @@ export const getSimilarImages = async (
             fileIDs,
             createdAt: Date.now(),
             version: CACHE_VERSION,
+            clipModelVersion: clipIndexingVersion,
         };
         await saveSimilarImagesCache(cacheEntry);
     }
@@ -302,20 +307,16 @@ const groupSimilarImagesHNSW = async (
             mappingsCount: cachedMetadata.fileIDToLabel.length,
         });
 
-        // Backward compatibility: If old cache doesn't have maxElements, estimate it
+        // Backward compatibility: If old cache doesn't have maxElements, we can't safely use it.
+        // Force a rebuild.
         if (!cachedMetadata.maxElements) {
             log.info(
-                `[Similar Images] Old cache format detected (missing maxElements)`,
+                `[Similar Images] Old cache format detected (missing maxElements), will rebuild`,
             );
-            // Estimate the original capacity (would have been rounded up to nearest 10k)
-            const estimatedCapacity =
-                Math.ceil(cachedMetadata.vectorCount / 10000) * 10000;
-            log.info(
-                `[Similar Images] Estimating original capacity: ${estimatedCapacity} (from ${cachedMetadata.vectorCount} vectors)`,
-            );
-
-            // Try to load with estimated capacity
-            cachedMetadata.maxElements = estimatedCapacity;
+            // Invalidate the cache by pretending it's a version mismatch or similar
+            // effectively we just drop into the "rebuild" logic below because
+            // we won't set indexLoaded = true
+            cachedMetadata.maxElements = 0; // Ensure check fails
         }
 
         // Check if we need incremental updates
@@ -329,16 +330,27 @@ const groupSimilarImagesHNSW = async (
         );
 
         // Check if capacity is sufficient for incremental updates
-        const netChange = addedFileIDs.length - removedFileIDs.length;
-        const requiredSize = cachedMetadata.vectorCount + netChange;
+        // HNSW uses soft deletes, so removed items don't immediately free up capacity.
+        // We should treat additions as consuming new space regardless of removals.
+        const requiredSize = cachedMetadata.vectorCount + addedFileIDs.length;
 
         // Check if the cached index has enough capacity
         const cachedMaxElements = cachedMetadata.maxElements;
 
-        // If adding more vectors than the cached index can hold, rebuild from scratch
-        if (requiredSize > cachedMaxElements) {
+        // Rebuild if we are deleting a significant portion of the index (>20%)
+        // to reclaim space from soft-deleted items (fragmentation)
+        const fragmentationRatio =
+            cachedMetadata.vectorCount > 0
+                ? removedFileIDs.length / cachedMetadata.vectorCount
+                : 0;
+        const tooMuchFragmentation = fragmentationRatio > 0.2;
+
+        // If adding more vectors than the cached index can hold, OR too much fragmentation, rebuild from scratch
+        if (requiredSize > cachedMaxElements || tooMuchFragmentation) {
             log.info(
-                `[Similar Images] Capacity insufficient (need ${requiredSize}, cached max ${cachedMaxElements}), will rebuild`,
+                `[Similar Images] Index rebuild needed. Required: ${requiredSize}, Max: ${cachedMaxElements}, Fragmentation: ${(
+                    fragmentationRatio * 100
+                ).toFixed(1)}%`,
             );
             log.info(
                 `[Similar Images] Cache details: ${cachedMetadata.vectorCount} cached, +${addedFileIDs.length} added, -${removedFileIDs.length} removed = ${requiredSize} required`,

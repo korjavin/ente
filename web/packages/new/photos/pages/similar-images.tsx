@@ -711,10 +711,7 @@ const SimilarImages: React.FC<SimilarImagesProps> = ({
                     progress={removeProgress}
                     onRemove={onRemoveSimilarImages}
                 />
-                    </Stack>
-                </Stack>
-                );
-            };
+
 interface CategoryTabsProps {
     categoryFilter: CategoryFilter;
     onCategoryFilterChange: (filter: CategoryFilter) => void;

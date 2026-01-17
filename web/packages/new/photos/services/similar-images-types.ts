@@ -156,6 +156,11 @@ export interface CachedSimilarImages {
      * Version of the caching format.
      */
     version: number;
+    /**
+     * Version of the CLIP model used to generate the embeddings.
+     * Used to invalidate the cache if the model changes.
+     */
+    clipModelVersion?: number;
 }
 
 /**
