@@ -1,7 +1,7 @@
 name: "Deploy (web)"
 
 on:
-    schedule:
+    # schedule:
         # [Note: Run workflow every 24 hours]
         #
         # Run every weekday at ~8:00 AM IST.
@@ -15,7 +15,7 @@ on:
         # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
         # https://crontab.guru/
         #
-        - cron: "25 2 * * 1-5"
+        # - cron: "25 2 * * 1-5"
     # Also allow manually running the workflow
     workflow_dispatch:
 

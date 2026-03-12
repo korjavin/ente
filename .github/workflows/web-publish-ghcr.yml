@@ -2,8 +2,8 @@ name: "Publish ghcr (web)"
 
 on:
     # Run automatically every Wednesday, at 07:00 UTC.
-    schedule:
-        - cron: '0 7 * * 3'
+    # schedule:
+        # - cron: '0 7 * * 3'
     # Run manually if needed to publish out of schedule.
     workflow_dispatch:
 
